@@ -1,0 +1,44 @@
+import { Link, useParams } from "react-router-dom"
+import { useBoards } from "@/context/BoardsContext"
+import { BoardHeader } from "@/components/board-detail/BoardHeader"
+import { BoardColumn } from "@/components/board-detail/BoardColumn"
+import { Button } from "@/components/ui/button"
+
+export function BoardDetailPage() {
+  const { boardId } = useParams()
+  const { boards, renameBoard, createTask, updateTask, deleteTask, moveTask } = useBoards()
+  const board = boards.find((item) => item.id === boardId)
+
+  if (!board) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-24 text-center">
+        <p className="text-sm font-medium text-muted-foreground">Board not found</p>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          It may have been deleted, or the link is incorrect.
+        </p>
+        <Button className="mt-2" nativeButton={false} render={<Link to="/" />}>
+          Back to boards
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <BoardHeader board={board} onRename={(title) => renameBoard(board.id, title)} />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {board.columns.map((column) => (
+          <BoardColumn
+            key={column.id}
+            column={column}
+            onCreateTask={(input) => createTask(board.id, column.id, input)}
+            onUpdateTask={(taskId, input) => updateTask(board.id, taskId, input)}
+            onDeleteTask={(taskId) => deleteTask(board.id, taskId)}
+            onDropTask={(taskId, targetIndex) => moveTask(board.id, taskId, column.id, targetIndex)}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
