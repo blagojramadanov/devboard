@@ -4,8 +4,6 @@ import type { Board, ColumnId, Task, TaskInput } from "@/types"
 import { createDefaultColumns } from "@/lib/columns"
 import { getBoards } from "@/services/boards"
 
-const STORAGE_KEY = "devboard.boards"
-
 interface BoardsContextValue {
   boards: Board[]
   createBoard: (title: string) => Board
@@ -37,10 +35,6 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
       cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(boards))
-  }, [boards])
 
   function createBoard(title: string): Board {
     const board: Board = {
