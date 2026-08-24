@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import type { Board, ColumnId, Task, TaskInput } from "@/types"
-import { seedBoards } from "@/data/seed-boards"
+import { createDefaultColumns } from "@/lib/columns"
+import { getBoards } from "@/services/boards"
 
 const STORAGE_KEY = "devboard.boards"
 
@@ -18,26 +19,24 @@ interface BoardsContextValue {
 
 const BoardsContext = createContext<BoardsContextValue | null>(null)
 
-function loadBoards(): Board[] {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (!stored) return seedBoards
-  try {
-    return JSON.parse(stored) as Board[]
-  } catch {
-    return seedBoards
-  }
-}
-
-function defaultColumns(): Board["columns"] {
-  return [
-    { id: "todo", title: "To Do", tasks: [] },
-    { id: "in-progress", title: "In Progress", tasks: [] },
-    { id: "done", title: "Done", tasks: [] },
-  ]
-}
-
 export function BoardsProvider({ children }: { children: ReactNode }) {
-  const [boards, setBoards] = useState<Board[]>(loadBoards)
+  const [boards, setBoards] = useState<Board[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+
+    getBoards()
+      .then((fetched) => {
+        if (!cancelled) setBoards(fetched)
+      })
+      .catch((error) => {
+        console.error("Failed to load boards from Supabase:", error)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(boards))
@@ -48,7 +47,7 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
       id: crypto.randomUUID(),
       title,
       createdAt: new Date().toISOString(),
-      columns: defaultColumns(),
+      columns: createDefaultColumns(),
     }
     setBoards((prev) => [...prev, board])
     return board
