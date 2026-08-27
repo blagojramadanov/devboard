@@ -15,7 +15,9 @@ interface ConfirmDialogProps {
   title: string
   description: string
   confirmLabel?: string
-  onConfirm: () => void
+  isConfirming?: boolean
+  error?: string | null
+  onConfirm: () => void | Promise<void>
 }
 
 export function ConfirmDialog({
@@ -24,8 +26,19 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel = "Delete",
+  isConfirming = false,
+  error = null,
   onConfirm,
 }: ConfirmDialogProps) {
+  async function handleConfirm() {
+    try {
+      await onConfirm()
+      onOpenChange(false)
+    } catch {
+      // caller surfaces the failure via `error`; keep the dialog open so it's visible
+    }
+  }
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -33,15 +46,10 @@ export function ConfirmDialog({
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            variant="destructive"
-            onClick={() => {
-              onConfirm()
-              onOpenChange(false)
-            }}
-          >
+          <AlertDialogCancel disabled={isConfirming}>Cancel</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" disabled={isConfirming} onClick={handleConfirm}>
             {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>

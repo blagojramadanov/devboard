@@ -5,7 +5,20 @@ import { CreateBoardDialog } from "@/components/board-list/CreateBoardDialog"
 import { EmptyState } from "@/components/shared/EmptyState"
 
 export function BoardsPage() {
-  const { boards, deleteBoard } = useBoards()
+  const { boards, boardsStatus, boardsError, deleteBoard } = useBoards()
+
+  if (boardsStatus === "loading") {
+    return <p className="py-24 text-center text-sm text-muted-foreground">Loading boards...</p>
+  }
+
+  if (boardsStatus === "error") {
+    return (
+      <div className="flex flex-col items-center gap-3 py-24 text-center">
+        <p className="text-sm font-medium text-destructive">Failed to load boards</p>
+        <p className="max-w-sm text-sm text-muted-foreground">{boardsError}</p>
+      </div>
+    )
+  }
 
   return (
     <div>

@@ -12,7 +12,7 @@ interface TaskCardProps {
   task: Task
   isDone?: boolean
   onEdit: () => void
-  onDelete: () => void
+  onDelete: () => Promise<void>
   onDropBefore: (draggedTaskId: string) => void
 }
 
@@ -28,10 +28,25 @@ function formatDueDate(dueDate: string) {
 export function TaskCard({ task, isDone = false, onEdit, onDelete, onDropBefore }: TaskCardProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const { getPersonById } = usePeople()
   const assignee = getPersonById(task.assigneeId)
   const today = new Date().toISOString().slice(0, 10)
   const isOverdue = !isDone && !!task.dueDate && task.dueDate < today
+
+  async function handleDelete() {
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await onDelete()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete task.")
+      throw err
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   function handleDragStart(event: DragEvent) {
     event.dataTransfer.setData("text/plain", task.id)
@@ -70,7 +85,10 @@ export function TaskCard({ task, isDone = false, onEdit, onDelete, onDropBefore 
           variant="ghost"
           size="icon-sm"
           className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => {
+            setError(null)
+            setConfirmOpen(true)
+          }}
         >
           <Trash2 className="size-3.5" />
           <span className="sr-only">Delete task</span>
@@ -103,7 +121,10 @@ export function TaskCard({ task, isDone = false, onEdit, onDelete, onDropBefore 
         onOpenChange={setConfirmOpen}
         title="Delete task"
         description={`Delete "${task.title}"? This cannot be undone.`}
-        onConfirm={onDelete}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete"}
+        isConfirming={isDeleting}
+        error={error}
+        onConfirm={handleDelete}
       />
     </div>
   )

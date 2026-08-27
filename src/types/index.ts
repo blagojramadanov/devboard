@@ -28,6 +28,11 @@ export interface Board {
   title: string
   createdAt: string
   columns: Column[]
+  // Lightweight task totals for list views that haven't loaded this
+  // board's real columns yet (see services/boards.ts getBoards()).
+  // Undefined once the real columns are known — callers should fall
+  // back to counting board.columns in that case.
+  taskCounts?: { total: number; done: number }
 }
 
 export interface TaskInput {

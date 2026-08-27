@@ -9,9 +9,9 @@ import { TaskDialog } from "@/components/board-detail/TaskDialog"
 
 interface BoardColumnProps {
   column: Column
-  onCreateTask: (input: TaskInput) => void
-  onUpdateTask: (taskId: string, input: TaskInput) => void
-  onDeleteTask: (taskId: string) => void
+  onCreateTask: (input: TaskInput) => Promise<void>
+  onUpdateTask: (taskId: string, input: TaskInput) => Promise<void>
+  onDeleteTask: (taskId: string) => Promise<void>
   onDropTask: (taskId: string, targetIndex: number) => void
 }
 
@@ -69,10 +69,7 @@ export function BoardColumn({
           heading={`Add task to ${column.title}`}
           submitLabel="Create task"
           onClose={() => setIsCreating(false)}
-          onSubmit={(input) => {
-            onCreateTask(input)
-            setIsCreating(false)
-          }}
+          onSubmit={(input) => onCreateTask(input)}
         />
       )}
 
@@ -82,10 +79,7 @@ export function BoardColumn({
           submitLabel="Save changes"
           task={editingTask}
           onClose={() => setEditingTask(null)}
-          onSubmit={(input) => {
-            onUpdateTask(editingTask.id, input)
-            setEditingTask(null)
-          }}
+          onSubmit={(input) => onUpdateTask(editingTask.id, input)}
         />
       )}
     </div>
