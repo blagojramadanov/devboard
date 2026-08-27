@@ -30,7 +30,7 @@ interface TaskDialogProps {
   submitLabel: string
   task?: Task
   onClose: () => void
-  onSubmit: (input: TaskInput) => void
+  onSubmit: (input: TaskInput) => void | Promise<void>
 }
 
 export function TaskDialog({ heading, submitLabel, task, onClose, onSubmit }: TaskDialogProps) {
@@ -41,23 +41,34 @@ export function TaskDialog({ heading, submitLabel, task, onClose, onSubmit }: Ta
   const [assigneeId, setAssigneeId] = useState(task?.assigneeId ?? UNASSIGNED)
   const [addingPerson, setAddingPerson] = useState(false)
   const [newPersonName, setNewPersonName] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const assigneeLabels: Record<string, string> = {
     [UNASSIGNED]: "Unassigned",
     ...Object.fromEntries(people.map((person) => [person.id, person.name])),
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const trimmedTitle = title.trim()
     if (!trimmedTitle) return
 
-    onSubmit({
-      title: trimmedTitle,
-      description: description.trim(),
-      assigneeId: assigneeId === UNASSIGNED ? null : assigneeId,
-      dueDate: dueDate || null,
-    })
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      await onSubmit({
+        title: trimmedTitle,
+        description: description.trim(),
+        assigneeId: assigneeId === UNASSIGNED ? null : assigneeId,
+        dueDate: dueDate || null,
+      })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save task.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   function handleAddPerson() {
@@ -88,6 +99,7 @@ export function TaskDialog({ heading, submitLabel, task, onClose, onSubmit }: Ta
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder="e.g. Fix header layout on mobile"
                 className="mt-1.5"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -181,9 +193,11 @@ export function TaskDialog({ heading, submitLabel, task, onClose, onSubmit }: Ta
             </div>
           </div>
 
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
           <DialogFooter>
-            <Button type="submit" disabled={!title.trim()}>
-              {submitLabel}
+            <Button type="submit" disabled={!title.trim() || isSubmitting}>
+              {isSubmitting ? "Saving..." : submitLabel}
             </Button>
           </DialogFooter>
         </form>

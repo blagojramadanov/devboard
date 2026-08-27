@@ -7,14 +7,34 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 
 interface BoardCardProps {
   board: Board
-  onDelete: (boardId: string) => void
+  onDelete: (boardId: string) => Promise<void>
 }
 
 export function BoardCard({ board, onDelete }: BoardCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const totalTasks = board.columns.reduce((sum, column) => sum + column.tasks.length, 0)
-  const doneTasks = board.columns.find((column) => column.id === "done")?.tasks.length ?? 0
+  const totalTasks =
+    board.taskCounts?.total ??
+    board.columns.reduce((sum, column) => sum + column.tasks.length, 0)
+  const doneTasks =
+    board.taskCounts?.done ??
+    board.columns.find((column) => column.id === "done")?.tasks.length ??
+    0
+
+  async function handleDelete() {
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await onDelete(board.id)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete board.")
+      throw err
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <div className="group relative rounded-xl border border-border bg-card p-4 transition-shadow hover:shadow-md">
@@ -26,7 +46,10 @@ export function BoardCard({ board, onDelete }: BoardCardProps) {
           variant="ghost"
           size="icon-sm"
           className="relative z-10 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-          onClick={() => setConfirmOpen(true)}
+          onClick={() => {
+            setError(null)
+            setConfirmOpen(true)
+          }}
         >
           <Trash2 className="size-4" />
           <span className="sr-only">Delete board</span>
@@ -42,7 +65,10 @@ export function BoardCard({ board, onDelete }: BoardCardProps) {
         onOpenChange={setConfirmOpen}
         title="Delete board"
         description={`Delete "${board.title}"? This removes all of its tasks and cannot be undone.`}
-        onConfirm={() => onDelete(board.id)}
+        confirmLabel={isDeleting ? "Deleting..." : "Delete"}
+        isConfirming={isDeleting}
+        error={error}
+        onConfirm={handleDelete}
       />
     </div>
   )

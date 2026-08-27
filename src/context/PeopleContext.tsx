@@ -1,10 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import type { Person } from "@/types"
-import { seedPeople, CURRENT_USER_ID } from "@/data/people"
-
-const STORAGE_KEY = "devboard.people"
-const ONBOARDED_KEY = "devboard.onboarded"
+import { seedPeople, CURRENT_USER_ID, PEOPLE_STORAGE_KEY, ONBOARDED_STORAGE_KEY } from "@/data/people"
 
 const AVATAR_COLORS = [
   "bg-blue-500",
@@ -40,10 +37,16 @@ interface PeopleContextValue {
 const PeopleContext = createContext<PeopleContextValue | null>(null)
 
 function loadPeople(): Person[] {
-  const stored = localStorage.getItem(STORAGE_KEY)
+  const stored = localStorage.getItem(PEOPLE_STORAGE_KEY)
   if (!stored) return seedPeople
   try {
-    return JSON.parse(stored) as Person[]
+    const parsed = JSON.parse(stored) as Person[]
+    // Migrate the legacy non-UUID seed id ("p1") to the current
+    // CURRENT_USER_ID: tasks.assignee_id is a uuid column in Supabase,
+    // so a stored "p1" id makes task creation/assignment fail.
+    return parsed.map((person) =>
+      person.id === "p1" ? { ...person, id: CURRENT_USER_ID } : person,
+    )
   } catch {
     return seedPeople
   }
@@ -52,11 +55,11 @@ function loadPeople(): Person[] {
 export function PeopleProvider({ children }: { children: ReactNode }) {
   const [people, setPeople] = useState<Person[]>(loadPeople)
   const [hasOnboarded, setHasOnboarded] = useState(
-    () => localStorage.getItem(ONBOARDED_KEY) === "true",
+    () => localStorage.getItem(ONBOARDED_STORAGE_KEY) === "true",
   )
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(people))
+    localStorage.setItem(PEOPLE_STORAGE_KEY, JSON.stringify(people))
   }, [people])
 
   function addPerson(name: string): Person {
@@ -88,7 +91,7 @@ export function PeopleProvider({ children }: { children: ReactNode }) {
 
   function completeOnboarding(update: PersonUpdate) {
     updatePerson(CURRENT_USER_ID, update)
-    localStorage.setItem(ONBOARDED_KEY, "true")
+    localStorage.setItem(ONBOARDED_STORAGE_KEY, "true")
     setHasOnboarded(true)
   }
 

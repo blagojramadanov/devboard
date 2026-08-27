@@ -3,7 +3,7 @@ import { Link } from "react-router-dom"
 import { ClipboardList } from "lucide-react"
 import { useBoards } from "@/context/BoardsContext"
 import { usePeople } from "@/context/PeopleContext"
-import { CURRENT_USER_ID } from "@/data/people"
+import { CURRENT_USER_ID, PEOPLE_STORAGE_KEY, ONBOARDED_STORAGE_KEY } from "@/data/people"
 import { PersonAvatar } from "@/components/shared/PersonAvatar"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { InlineEditableText } from "@/components/shared/InlineEditableText"
@@ -25,9 +25,8 @@ export function ProfilePage() {
   const [resetOpen, setResetOpen] = useState(false)
 
   function handleReset() {
-    localStorage.removeItem("devboard.boards")
-    localStorage.removeItem("devboard.people")
-    localStorage.removeItem("devboard.onboarded")
+    localStorage.removeItem(PEOPLE_STORAGE_KEY)
+    localStorage.removeItem(ONBOARDED_STORAGE_KEY)
     window.location.reload()
   }
 
@@ -115,7 +114,7 @@ export function ProfilePage() {
       <div className="mt-10 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
         <h2 className="text-sm font-medium">Reset app data</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Clears all boards, tasks, and your profile from this browser. This cannot be undone.
+          Clears your local profile from this browser. This cannot be undone.
         </p>
         <Button
           variant="destructive"
@@ -131,7 +130,7 @@ export function ProfilePage() {
         open={resetOpen}
         onOpenChange={setResetOpen}
         title="Reset app data?"
-        description="This deletes every board and task, and clears your profile so you'll see the welcome screen again. This cannot be undone."
+        description="This clears your local profile so you'll see the welcome screen again. This cannot be undone."
         confirmLabel="Reset"
         onConfirm={handleReset}
       />

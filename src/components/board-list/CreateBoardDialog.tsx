@@ -21,16 +21,26 @@ export function CreateBoardDialog() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const trimmed = title.trim()
     if (!trimmed) return
 
-    const board = createBoard(trimmed)
-    setTitle("")
-    setOpen(false)
-    navigate(`/boards/${board.id}`)
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      const board = await createBoard(trimmed)
+      setTitle("")
+      setOpen(false)
+      navigate(`/boards/${board.id}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create board.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -38,7 +48,10 @@ export function CreateBoardDialog() {
       open={open}
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
-        if (!nextOpen) setTitle("")
+        if (!nextOpen) {
+          setTitle("")
+          setError(null)
+        }
       }}
     >
       <DialogTrigger render={<Button />}>
@@ -61,12 +74,14 @@ export function CreateBoardDialog() {
               onChange={(event) => setTitle(event.target.value)}
               placeholder="e.g. Website Relaunch"
               className="mt-1.5"
+              disabled={isSubmitting}
             />
+            {error && <p className="mt-1.5 text-sm text-destructive">{error}</p>}
           </div>
 
           <DialogFooter>
-            <Button type="submit" disabled={!title.trim()}>
-              Create board
+            <Button type="submit" disabled={!title.trim() || isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create board"}
             </Button>
           </DialogFooter>
         </form>
