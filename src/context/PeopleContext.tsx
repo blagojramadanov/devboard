@@ -41,9 +41,6 @@ function loadPeople(): Person[] {
   if (!stored) return seedPeople
   try {
     const parsed = JSON.parse(stored) as Person[]
-    // Migrate the legacy non-UUID seed id ("p1") to the current
-    // CURRENT_USER_ID: tasks.assignee_id is a uuid column in Supabase,
-    // so a stored "p1" id makes task creation/assignment fail.
     return parsed.map((person) =>
       person.id === "p1" ? { ...person, id: CURRENT_USER_ID } : person,
     )

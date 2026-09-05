@@ -1,22 +1,14 @@
 import { supabase } from "@/lib/supabase"
 import { createDefaultColumns } from "@/lib/columns"
-import type { Board, ColumnId, Task, TaskInput } from "@/types"
+import type { Database } from "@/types/supabase"
+import type { Board, Column, ColumnId, Task, TaskInput } from "@/types"
 
-interface BoardRow {
-  id: string
-  title: string
-  created_at: string
-}
+type BoardRow = Pick<Database["public"]["Tables"]["boards"]["Row"], "id" | "title" | "created_at">
 
-interface TaskRow {
-  id: string
-  title: string
-  description: string
-  assignee_id: string | null
-  due_date: string | null
-  status: ColumnId
-  created_at: string
-}
+type TaskRow = Pick<
+  Database["public"]["Tables"]["tasks"]["Row"],
+  "id" | "title" | "description" | "assignee_id" | "due_date" | "status" | "created_at"
+>
 
 function toBoard(row: BoardRow): Board {
   return {
@@ -38,6 +30,28 @@ function toTask(row: TaskRow): Task {
   }
 }
 
+function buildTaskCountsByBoard(
+  taskRows: Pick<Database["public"]["Tables"]["tasks"]["Row"], "board_id" | "status">[],
+): Map<string, { total: number; done: number }> {
+  const counts = new Map<string, { total: number; done: number }>()
+  for (const row of taskRows) {
+    const entry = counts.get(row.board_id) ?? { total: 0, done: 0 }
+    entry.total += 1
+    if (row.status === "done") entry.done += 1
+    counts.set(row.board_id, entry)
+  }
+  return counts
+}
+
+function groupTasksIntoColumns(taskRows: TaskRow[]): Column[] {
+  const columns = createDefaultColumns()
+  for (const row of taskRows) {
+    const column = columns.find((item) => item.id === row.status)
+    if (column) column.tasks.push(toTask(row))
+  }
+  return columns
+}
+
 export async function getBoards(): Promise<Board[]> {
   const { data, error } = await supabase
     .from("boards")
@@ -50,8 +64,6 @@ export async function getBoards(): Promise<Board[]> {
 
   const boards = (data ?? []).map(toBoard)
 
-  // One lightweight query for every board's task counts, instead of
-  // fetching full task rows per board (or per-board count queries).
   const { data: taskRows, error: countsError } = await supabase
     .from("tasks")
     .select("board_id, status")
@@ -60,13 +72,7 @@ export async function getBoards(): Promise<Board[]> {
     throw new Error(`Failed to fetch task counts: ${countsError.message}`)
   }
 
-  const counts = new Map<string, { total: number; done: number }>()
-  for (const row of taskRows ?? []) {
-    const entry = counts.get(row.board_id) ?? { total: 0, done: 0 }
-    entry.total += 1
-    if (row.status === "done") entry.done += 1
-    counts.set(row.board_id, entry)
-  }
+  const counts = buildTaskCountsByBoard(taskRows ?? [])
 
   for (const board of boards) {
     board.taskCounts = counts.get(board.id) ?? { total: 0, done: 0 }
@@ -129,18 +135,26 @@ export async function getBoardById(boardId: string): Promise<Board | null> {
     throw new Error(`Failed to fetch tasks: ${tasksError.message}`)
   }
 
-  const columns = createDefaultColumns()
-  for (const row of taskRows ?? []) {
-    const column = columns.find((item) => item.id === row.status)
-    if (column) column.tasks.push(toTask(row))
-  }
-
   return {
     id: boardRow.id,
     title: boardRow.title,
     createdAt: boardRow.created_at,
-    columns,
+    columns: groupTasksIntoColumns(taskRows ?? []),
   }
+}
+
+async function countTasksInColumn(boardId: string, columnId: ColumnId): Promise<number> {
+  const { count, error } = await supabase
+    .from("tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("board_id", boardId)
+    .eq("status", columnId)
+
+  if (error) {
+    throw new Error(`Failed to create task: ${error.message}`)
+  }
+
+  return count ?? 0
 }
 
 export async function createTask(
@@ -148,15 +162,7 @@ export async function createTask(
   columnId: ColumnId,
   input: TaskInput,
 ): Promise<Task> {
-  const { count, error: countError } = await supabase
-    .from("tasks")
-    .select("id", { count: "exact", head: true })
-    .eq("board_id", boardId)
-    .eq("status", columnId)
-
-  if (countError) {
-    throw new Error(`Failed to create task: ${countError.message}`)
-  }
+  const position = await countTasksInColumn(boardId, columnId)
 
   const { data, error } = await supabase
     .from("tasks")
@@ -167,7 +173,7 @@ export async function createTask(
       assignee_id: input.assigneeId,
       due_date: input.dueDate,
       status: columnId,
-      position: count ?? 0,
+      position,
     })
     .select("id, title, description, assignee_id, due_date, status, created_at")
     .single()

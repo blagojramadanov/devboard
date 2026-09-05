@@ -15,3 +15,11 @@ npm install
 cp .env.example .env.local   # then fill in your Supabase project's URL and anon key
 npm run dev
 ```
+
+`src/types/supabase.ts` holds generated types for the Supabase database schema. Whenever the schema changes (new migration), regenerate it with:
+
+```
+npm run gen:types
+```
+
+This requires the Supabase CLI to be linked to the project (`supabase link`).
