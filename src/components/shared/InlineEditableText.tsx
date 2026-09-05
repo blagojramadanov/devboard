@@ -41,7 +41,7 @@ export function InlineEditableText({
       await onSave(trimmed)
       setIsEditing(false)
     } catch {
-      // caller surfaces the failure via `error`; stay in edit mode so the user can retry
+      void 0
     }
   }
 

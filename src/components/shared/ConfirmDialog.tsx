@@ -35,7 +35,7 @@ export function ConfirmDialog({
       await onConfirm()
       onOpenChange(false)
     } catch {
-      // caller surfaces the failure via `error`; keep the dialog open so it's visible
+      void 0
     }
   }
 

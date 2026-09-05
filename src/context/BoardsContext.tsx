@@ -19,10 +19,6 @@ import {
   deleteTask as deleteTaskRequest,
 } from "@/services/boards";
 
-// Renumbers a column's tasks to sequential positions (0..n-1), matching
-// their current array order. Shared by moveTask (Task 8) and deleteTask
-// (Task 9) — both need the same "column is now in its final local order,
-// persist that order" step.
 function buildPositionUpdates(column: Column) {
   return column.tasks.map((task, index) => ({
     id: task.id,
@@ -202,8 +198,6 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
     try {
       await moveTaskRequest(buildPositionUpdates(remainingColumn));
     } catch (error) {
-      // The task is already deleted; a normalization failure just means
-      // the remaining rows may have position gaps until the next move.
       console.error("Failed to normalize task positions after delete:", error);
     }
   }
@@ -245,7 +239,6 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
     const previousBoard = board;
     const nextBoard = { ...board, columns: nextColumns };
 
-    // Optimistic update: apply locally right away, reconcile with Supabase after.
     setBoards((prev) =>
       prev.map((item) => (item.id === boardId ? nextBoard : item)),
     );
@@ -258,7 +251,6 @@ export function BoardsProvider({ children }: { children: ReactNode }) {
     try {
       await moveTaskRequest(updates);
     } catch (error) {
-      // Roll back so the UI never stays out of sync with Supabase.
       setBoards((prev) =>
         prev.map((item) => (item.id === boardId ? previousBoard : item)),
       );
